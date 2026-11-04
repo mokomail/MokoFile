@@ -21,12 +21,13 @@
 
 Требуется JDK 17 и Android SDK (platform 35, build-tools 35.0.0).
 
-```bash
-./gradlew assembleDebug
+```powershell
+.\build.ps1            # debug APK -> ..\builds
+.\build.ps1 -Type release
 ```
 
-APK появится в `app/build/outputs/apk/debug/MokoFile-0.1.0-debug.apk`.
-Чтобы сразу положить его в общую папку сборок:
+Скрипт сам подхватывает JDK из `C:\android-sdk\jdk17` и вызывает Gradle wrapper.
+Вручную:
 
 ```bash
 ./gradlew exportDebugApk
