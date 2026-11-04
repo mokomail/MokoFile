@@ -126,10 +126,10 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.VH> {
 
         if (item.directory) {
             holder.subtitle.setText(Formats.typeLabel(item.type) + " · " + Formats.date(item.modified));
-            holder.meta.setText("—");
+            if (holder.meta != null) holder.meta.setText("—");
         } else {
             holder.subtitle.setText(Formats.typeLabel(item.type) + " · " + Formats.size(item.size));
-            holder.meta.setText(Formats.date(item.modified));
+            if (holder.meta != null) holder.meta.setText(Formats.date(item.modified));
         }
 
         int nameColor = isSelected
@@ -141,7 +141,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.VH> {
 
         holder.name.setTextColor(nameColor);
         holder.subtitle.setTextColor(subColor);
-        holder.meta.setTextColor(subColor);
+        if (holder.meta != null) holder.meta.setTextColor(subColor);
 
         GradientDrawable row = new GradientDrawable();
         row.setCornerRadius(Colors.dp(context, mode == MODE_GRID ? 20 : 16));

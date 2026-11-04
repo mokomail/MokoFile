@@ -41,6 +41,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -125,6 +126,8 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
     private ChipGroup quickRow;
     private View crumbScroll;
     private LinearLayout crumbRow;
+    private AppBarLayout appBar;
+    private boolean headerExpanded = true;
     private TextView folderTitle;
     private TextView countLabel;
     private MaterialButton sortButton;
@@ -284,6 +287,7 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
         searchCard = findViewById(R.id.searchCard);
         searchInput = findViewById(R.id.searchInput);
         searchClose = findViewById(R.id.searchClose);
+        appBar = findViewById(R.id.appBar);
         storageCard = findViewById(R.id.storageCard);
         storageBar = findViewById(R.id.storageBar);
         storageValue = findViewById(R.id.storageValue);
@@ -353,6 +357,22 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
         adapter = new FileAdapter(this);
         fileList.setLayoutManager(new LinearLayoutManager(this));
         fileList.setAdapter(adapter);
+
+        fileList.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if (dy > 0 && headerExpanded) {
+                    setHeaderExpanded(false, true);
+                } else if (dy < 0 && !headerExpanded) {
+                    setHeaderExpanded(true, true);
+                }
+            }
+        });
+    }
+
+    private void setHeaderExpanded(boolean expanded, boolean animate) {
+        headerExpanded = expanded;
+        appBar.setExpanded(expanded, animate);
     }
 
     private void setupActions() {
@@ -724,6 +744,17 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
     }
 
     private void openFile(FileItem item) {
+        if ("image".equals(item.type)) {
+            startActivity(new Intent(this, ImageViewerActivity.class)
+                    .putExtra(ImageViewerActivity.EXTRA_PATH, item.file.getAbsolutePath()));
+            return;
+        }
+        if ("audio".equals(item.type) || "video".equals(item.type)) {
+            startActivity(new Intent(this, MediaPlayerActivity.class)
+                    .putExtra(MediaPlayerActivity.EXTRA_PATH, item.file.getAbsolutePath()));
+            return;
+        }
+
         Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", item.file);
         Intent intent = new Intent(Intent.ACTION_VIEW)
                 .setDataAndType(uri, mimeOf(item))
@@ -1219,26 +1250,6 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
             selectAll();
             return true;
         }
-        if (id == R.id.action_sort) {
-            showSortMenu();
-            return true;
-        }
-        if (id == R.id.sort_name) {
-            chooseSort("name");
-            return true;
-        }
-        if (id == R.id.sort_size) {
-            chooseSort("size");
-            return true;
-        }
-        if (id == R.id.sort_date) {
-            chooseSort("date");
-            return true;
-        }
-        if (id == R.id.sort_type) {
-            chooseSort("type");
-            return true;
-        }
         if (id == R.id.action_refresh) {
             refresh();
             return true;
@@ -1257,24 +1268,6 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
             view.setIcon(gridMode ? R.drawable.ic_list : R.drawable.ic_grid);
             view.setTitle(gridMode ? R.string.view_list : R.string.view_grid);
         }
-
-        int sortItemId;
-        switch (sortKey) {
-            case "size":
-                sortItemId = R.id.sort_size;
-                break;
-            case "date":
-                sortItemId = R.id.sort_date;
-                break;
-            case "type":
-                sortItemId = R.id.sort_type;
-                break;
-            default:
-                sortItemId = R.id.sort_name;
-                break;
-        }
-        MenuItem sortItem = menu.findItem(sortItemId);
-        if (sortItem != null) sortItem.setChecked(true);
     }
 
     private void setGridMode(boolean grid) {

@@ -119,4 +119,13 @@
     <string name="repository">GitHub</string>
     <string name="repository_desc">mokomail/mokofiles</string>
     <string name="about_note">Нативный файловый менеджер в стиле Material You.</string>
+
+    <string name="back">Назад</string>
+    <string name="share">Поделиться</string>
+    <string name="image">Изображение</string>
+    <string name="audio">Аудио</string>
+    <string name="video">Видео</string>
+    <string name="play">Воспроизвести</string>
+    <string name="pause">Пауза</string>
+    <string name="cannot_play">Не удалось воспроизвести файл</string>
 </resources>
