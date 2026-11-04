@@ -48,5 +48,6 @@ Workflow `.github/workflows/build.yml` собирает debug APK на кажд�
 
 ## СоцСети
 
-Tiktok: @mokomail
+TikTok: @mokomail
+
 GitHub: https://github.com/mokomail/
