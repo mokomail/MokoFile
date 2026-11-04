@@ -33,7 +33,7 @@
 ./gradlew exportDebugApk
 ```
 
-Тогда APK окажется в `../builds/MokoFile-0.1.0-debug.apk` (то есть `nichevo/builds`).
+Тогда APK окажется в `../builds/MokoFile-0.1.0-debug.apk` 
 
 ## Разрешения
 
@@ -45,3 +45,8 @@
 
 Workflow `.github/workflows/build.yml` собирает debug APK на каждый push в `main`/`master`
 и выкладывает его артефактом `MokoFile-debug`.
+
+## СоцСети
+
+Tiktok: @mokomail
+GitHub: https://github.com/mokomail/
