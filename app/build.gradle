@@ -26,6 +26,12 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "MokoFile-${variant.versionName}-${variant.buildType.name}.apk"
+        }
+    }
 }
 
 dependencies {
@@ -35,4 +41,24 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.core:core:1.15.0'
     implementation 'androidx.activity:activity:1.9.3'
+}
+
+// Готовые APK складываются в ..\builds (папка nichevo\builds)
+def exportDir = rootProject.file("../builds")
+
+tasks.register("exportDebugApk", Copy) {
+    dependsOn "assembleDebug"
+    from layout.buildDirectory.dir("outputs/apk/debug")
+    include "*.apk"
+    into exportDir
+    doLast {
+        println "APK: " + new File(exportDir, "MokoFile-${android.defaultConfig.versionName}-debug.apk")
+    }
+}
+
+tasks.register("exportReleaseApk", Copy) {
+    dependsOn "assembleRelease"
+    from layout.buildDirectory.dir("outputs/apk/release")
+    include "*.apk"
+    into exportDir
 }

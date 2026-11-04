@@ -50,8 +50,8 @@
         app:showAsAction="never" />
 
     <item
-        android:id="@+id/action_theme"
-        android:icon="@drawable/ic_palette"
-        android:title="@string/theme"
+        android:id="@+id/action_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/settings"
         app:showAsAction="never" />
 </menu>

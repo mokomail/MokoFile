@@ -17,11 +17,17 @@ public final class FileRepository {
     private FileRepository() {}
 
     public static List<FileItem> list(File dir) {
+        return list(dir, false);
+    }
+
+    public static List<FileItem> list(File dir, boolean includeHidden) {
         List<FileItem> out = new ArrayList<>();
         File[] files = dir.listFiles();
         if (files != null) {
             for (File f : files) {
-                if (f.exists()) out.add(new FileItem(f));
+                if (!f.exists()) continue;
+                if (!includeHidden && f.getName().startsWith(".")) continue;
+                out.add(new FileItem(f));
             }
         }
         return out;

@@ -17,6 +17,9 @@
     <color name="surface_variant">#f1eef4</color>
     <color name="on_surface_variant">#53485b</color>
     <color name="outline">#81758a</color>
+    <color name="outline_variant">#e4dcea</color>
+    <color name="access_granted">#2E7D32</color>
+    <color name="access_denied">#C62828</color>
     <color name="error">#bd3728</color>
     <color name="on_error">#fdfcfc</color>
     <color name="error_container">#fbddda</color>

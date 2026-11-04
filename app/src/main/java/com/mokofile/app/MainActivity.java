@@ -3,7 +3,6 @@ package com.mokofile.app;
 import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -13,7 +12,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
-import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -22,6 +20,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.MimeTypeMap;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -33,7 +32,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
@@ -49,6 +47,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
@@ -88,8 +87,6 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
 
-    private SharedPreferences prefs;
-
     private File rootDir;
     private File currentDir;
     private final Deque<File> history = new ArrayDeque<>();
@@ -103,6 +100,9 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
     private FileAdapter adapter;
     private boolean gridMode;
     private boolean sortAsc = true;
+    private boolean foldersFirst = true;
+    private boolean showHidden;
+    private boolean dynamicOn;
     private String sortKey = "name";
     private String filterType = "all";
     private String query = "";
@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
 
     private MaterialToolbar toolbar;
     private MaterialCardView searchCard;
-    private TextInputEditText searchInput;
+    private EditText searchInput;
     private ImageView searchClose;
     private MaterialCardView storageCard;
     private LinearProgressIndicator storageBar;
@@ -162,10 +162,12 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (Settings.dynamicColor(this)) {
+            DynamicColors.applyToActivityIfAvailable(this);
+        }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        prefs = getSharedPreferences(MokoApp.PREFS, MODE_PRIVATE);
         rootDir = new File(ROOT_PATH);
         accessGrantedAtStart = hasAccess();
 
@@ -179,16 +181,19 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
 
         bindViews();
         setupToolbar();
-        setupChips();
         setupList();
+        setupChips();
         setupActions();
         setupResultLaunchers();
 
-        gridMode = prefs.getBoolean("grid", false);
-        sortKey = prefs.getString("sort_key", "name");
-        sortAsc = prefs.getBoolean("sort_asc", true);
+        gridMode = Settings.grid(this);
+        sortKey = Settings.sortKey(this);
+        sortAsc = Settings.sortAsc(this);
+        foldersFirst = Settings.foldersFirst(this);
+        showHidden = Settings.showHidden(this);
+        dynamicOn = Settings.dynamicColor(this);
 
-        File saved = new File(prefs.getString("last_dir", ROOT_PATH));
+        File saved = new File(Settings.lastDir(this, ROOT_PATH));
         currentDir = saved.isDirectory() ? saved : rootDir;
 
         setGridMode(gridMode);
@@ -218,20 +223,51 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
     @Override
     protected void onResume() {
         super.onResume();
+
         if (hasAccess() && !accessGrantedAtStart) {
             accessGrantedAtStart = true;
             openDir(currentDir, false);
+            return;
+        }
+
+        // Настройки могли измениться на экране «Настройки».
+        if (Settings.dynamicColor(this) != dynamicOn) {
+            recreate();
+            return;
+        }
+
+        boolean newGrid = Settings.grid(this);
+        if (newGrid != gridMode) setGridMode(newGrid);
+
+        String newSort = Settings.sortKey(this);
+        boolean newAsc = Settings.sortAsc(this);
+        if (!newSort.equals(sortKey) || newAsc != sortAsc) {
+            sortKey = newSort;
+            sortAsc = newAsc;
+            applyFilter();
+            updateSortLabel();
+            updateMenuState();
+        }
+
+        boolean newHidden = Settings.showHidden(this);
+        if (newHidden != showHidden) {
+            showHidden = newHidden;
+            refresh();
+        }
+
+        boolean newFolders = Settings.foldersFirst(this);
+        if (newFolders != foldersFirst) {
+            foldersFirst = newFolders;
+            applyFilter();
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        prefs.edit()
-                .putBoolean("grid", gridMode)
-                .putString("sort_key", sortKey)
-                .putBoolean("sort_asc", sortAsc)
-                .apply();
+        Settings.setGrid(this, gridMode);
+        Settings.setSortKey(this, sortKey);
+        Settings.setSortAsc(this, sortAsc);
     }
 
     @Override
@@ -302,7 +338,7 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
         }
 
         quickRow.setOnCheckedStateChangeListener((group, ids) -> {
-            if (ids.isEmpty()) return;
+            if (ids.isEmpty() || adapter == null) return;
             Chip chip = group.findViewById(ids.get(0));
             if (chip == null) return;
             filterType = String.valueOf(chip.getTag());
@@ -398,11 +434,11 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
     private void requestAccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                         Uri.parse("package:" + getPackageName()));
                 startActivity(intent);
             } catch (ActivityNotFoundException e) {
-                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
             }
         } else {
             permissionLauncher.launch(new String[]{
@@ -422,7 +458,7 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
         }
 
         currentDir = dir;
-        prefs.edit().putString("last_dir", dir.getAbsolutePath()).apply();
+        Settings.setLastDir(this, dir.getAbsolutePath());
 
         selected.clear();
         selectionMode = false;
@@ -566,7 +602,7 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
         final File dir = currentDir;
 
         io.execute(() -> {
-            List<FileItem> items = FileRepository.list(dir);
+            List<FileItem> items = FileRepository.list(dir, showHidden);
             String[] stats = FileRepository.storageStats(rootDir);
             main.post(() -> {
                 if (currentDir == null || !currentDir.equals(dir)) return;
@@ -609,8 +645,8 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
 
     private Comparator<FileItem> comparator() {
         return (a, b) -> {
-            if (a.directory != b.directory) return a.directory ? -1 : 1;
-            if (a.directory) return a.name.compareToIgnoreCase(b.name);
+            if (foldersFirst && a.directory != b.directory) return a.directory ? -1 : 1;
+            if (foldersFirst && a.directory) return a.name.compareToIgnoreCase(b.name);
 
             int cmp;
             switch (sortKey) {
@@ -622,12 +658,15 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
                     break;
                 case "type":
                     cmp = a.type.compareTo(b.type);
-                    if (cmp == 0) cmp = a.name.compareToIgnoreCase(b.name);
                     break;
                 case "name":
                 default:
                     cmp = a.name.compareToIgnoreCase(b.name);
                     break;
+            }
+            if (cmp == 0) {
+                cmp = a.name.compareToIgnoreCase(b.name);
+                return cmp;
             }
             return sortAsc ? cmp : -cmp;
         };
@@ -904,6 +943,12 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
 
     private void confirmDelete(List<FileItem> items) {
         if (items.isEmpty()) return;
+
+        if (!Settings.confirmDelete(this)) {
+            deleteItems(items);
+            return;
+        }
+
         int n = items.size();
         String title = n == 1
                 ? getString(R.string.delete_title)
@@ -1198,8 +1243,8 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
             refresh();
             return true;
         }
-        if (id == R.id.action_theme) {
-            showThemeDialog();
+        if (id == R.id.action_settings) {
+            startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
         return false;
@@ -1234,6 +1279,7 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
 
     private void setGridMode(boolean grid) {
         gridMode = grid;
+        Settings.setGrid(this, grid);
         adapter.setMode(grid ? FileAdapter.MODE_GRID : FileAdapter.MODE_LIST);
         fileList.setLayoutManager(grid
                 ? new GridLayoutManager(this, 2)
@@ -1254,6 +1300,7 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
             int id = item.getItemId();
             if (id == 5) {
                 sortAsc = !sortAsc;
+                Settings.setSortAsc(this, sortAsc);
                 applyFilter();
                 updateSortLabel();
             } else if (id >= 1 && id <= 4) {
@@ -1272,6 +1319,8 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
             sortKey = key;
             sortAsc = true;
         }
+        Settings.setSortKey(this, sortKey);
+        Settings.setSortAsc(this, sortAsc);
         applyFilter();
         updateSortLabel();
         updateMenuState();
@@ -1294,33 +1343,6 @@ public class MainActivity extends AppCompatActivity implements FileAdapter.Liste
                 break;
         }
         sortButton.setText(label + (sortAsc ? " ↑" : " ↓"));
-    }
-
-    private void showThemeDialog() {
-        final int[] modes = {
-                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
-                AppCompatDelegate.MODE_NIGHT_NO,
-                AppCompatDelegate.MODE_NIGHT_YES
-        };
-        String[] labels = {
-                getString(R.string.theme_system),
-                getString(R.string.theme_light),
-                getString(R.string.theme_dark)
-        };
-
-        int current = prefs.getInt(MokoApp.KEY_THEME, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
-        int checked = 0;
-        for (int i = 0; i < modes.length; i++) {
-            if (modes[i] == current) checked = i;
-        }
-
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.theme)
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    dialog.dismiss();
-                    MokoApp.saveTheme(this, modes[which]);
-                })
-                .show();
     }
 
     // -------------------------------------------------------------- search

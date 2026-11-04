@@ -80,4 +80,43 @@
     <string name="all_files">Все файлы</string>
     <string name="no_app">Нет приложения для этого файла</string>
     <string name="cannot_open">Не удалось открыть</string>
+
+    <string name="settings">Настройки</string>
+    <string name="section_appearance">Оформление</string>
+    <string name="section_files">Файлы</string>
+    <string name="section_storage">Хранилище</string>
+    <string name="section_about">О приложении</string>
+
+    <string name="theme_value_system">Как в системе</string>
+    <string name="theme_value_light">Светлая</string>
+    <string name="theme_value_dark">Тёмная</string>
+
+    <string name="dynamic_color">Динамический цвет</string>
+    <string name="dynamic_color_desc">Палитра из обоев Material You</string>
+    <string name="default_view">Вид по умолчанию</string>
+    <string name="view_value_list">Список</string>
+    <string name="view_value_grid">Сетка</string>
+
+    <string name="hidden_files">Показывать скрытые файлы</string>
+    <string name="hidden_files_desc">Имена, начинающиеся с точки</string>
+    <string name="folders_first">Сначала папки</string>
+    <string name="folders_first_desc">Папки выше файлов при сортировке</string>
+    <string name="confirm_delete">Подтверждать удаление</string>
+    <string name="confirm_delete_desc">Спрашивать перед удалением</string>
+
+    <string name="reset_settings">Сбросить настройки</string>
+    <string name="reset_settings_desc">Вернуть значения по умолчанию</string>
+    <string name="reset_confirm_title">Сбросить настройки?</string>
+    <string name="reset_confirm_message">Тема, вид списка, сортировка и поведение файлов вернутся к значениям по умолчанию.</string>
+    <string name="reset">Сбросить</string>
+
+    <string name="access_all_files">Доступ ко всем файлам</string>
+    <string name="access_granted">Разрешён</string>
+    <string name="access_missing">Не разрешён</string>
+    <string name="open">Открыть</string>
+
+    <string name="version">Версия</string>
+    <string name="repository">GitHub</string>
+    <string name="repository_desc">mokomail/mokofiles</string>
+    <string name="about_note">Нативный файловый менеджер в стиле Material You.</string>
 </resources>
